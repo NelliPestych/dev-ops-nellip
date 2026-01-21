@@ -6,4 +6,6 @@ cat >> .gitignore <<'EOF'
 crash.log
 crash.*.log
 EOF
+# IDE
 .idea/
+.DS_Store

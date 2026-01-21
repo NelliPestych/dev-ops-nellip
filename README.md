@@ -75,6 +75,53 @@ aws sts get-caller-identity
 5. Destroy infrastructure (after review)
    terraform destroy
 
+🔐 Terraform Remote Backend (Important)
+
+This project uses an S3 backend with DynamoDB locking.
+
+Because the S3 bucket and DynamoDB table are created by Terraform itself, the backend is not enabled on the first run.
+
+First run (create S3 + DynamoDB locally)
+
+In backend.tf backend configuration must be commented:
+
+terraform {}
+
+
+Then run:
+
+terraform init
+terraform apply
+
+
+This will create:
+
+S3 bucket for Terraform state
+
+DynamoDB table for state locking
+
+VPC infrastructure
+
+ECR repository
+
+Second run (enable remote backend)
+
+After S3 bucket is created, update backend.tf:
+
+terraform {
+ backend "s3" {
+ bucket         = "nellip-tfstate-lesson5-053414411835"
+ key            = "lesson-5/terraform.tfstate"
+ region         = "us-west-2"
+ dynamodb_table = "terraform-locks"
+ encrypt        = true
+ }
+}
+
+Then reinitialize Terraform:
+terraform init -reconfigure
+From this point, Terraform state will be stored remotely in S3 with DynamoDB locking.
+
 🧩 Modules Description
 🔹 s3-backend
 
