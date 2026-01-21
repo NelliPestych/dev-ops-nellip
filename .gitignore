@@ -6,3 +6,4 @@ cat >> .gitignore <<'EOF'
 crash.log
 crash.*.log
 EOF
+.idea
