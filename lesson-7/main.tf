@@ -35,5 +35,13 @@ module "ecr" {
 module "eks" {
   source       = "./modules/eks"
   cluster_name = "lesson-7-eks"
-  subnet_ids   = module.vpc.private_subnet_ids
+
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.private_subnet_ids   # або public_subnet_ids, але краще private
+
+  desired_size = 2
+  min_size     = 2
+  max_size     = 6
+
+  instance_type = "t3.medium"
 }
