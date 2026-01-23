@@ -1,0 +1,23 @@
+replicaCount: 2
+
+image:
+  repository: ""   # set your ECR repo url here
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8000
+
+config:
+  DJANGO_SETTINGS_MODULE: "app.settings"
+  DEBUG: "0"
+  ALLOWED_HOSTS: "*"
+  # + сюди перенеси env з теми 4 (DB_HOST, DB_NAME, SECRET_KEY і т.д.)
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
