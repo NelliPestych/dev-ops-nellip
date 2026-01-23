@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: ""   # set your ECR repo url here
+  repository: "053414411835.dkr.ecr.us-west-2.amazonaws.com/lesson-7-django-ecr"
   tag: "latest"
   pullPolicy: IfNotPresent
 
@@ -11,10 +11,25 @@ service:
   targetPort: 8000
 
 config:
-  DJANGO_SETTINGS_MODULE: "app.settings"
+  DJANGO_SETTINGS_MODULE: "config.settings"
   DEBUG: "0"
   ALLOWED_HOSTS: "*"
-  # + сюди перенеси env з теми 4 (DB_HOST, DB_NAME, SECRET_KEY і т.д.)
+  # Database configuration from lesson-4
+  DB_HOST: "db"
+  DB_NAME: "postgres"
+  DB_USER: "postgres"
+  DB_PASSWORD: "postgres"
+  DB_PORT: "5432"
+  # Django secret key from lesson-4
+  SECRET_KEY: "django-insecure-jzx!h5%ofjiz63h5ho7c@r4lk*z9$+53%0b2d_b&mdu9*gw6&@"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
 
 autoscaling:
   enabled: true

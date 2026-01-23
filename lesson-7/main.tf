@@ -8,7 +8,8 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-west-2"
+  region  = "us-west-2"
+  profile = "study"
 }
 
 module "vpc" {
@@ -43,5 +44,5 @@ module "eks" {
   min_size     = 2
   max_size     = 6
 
-  instance_type = "t3.medium"
+  instance_types = ["t3.medium"]
 }

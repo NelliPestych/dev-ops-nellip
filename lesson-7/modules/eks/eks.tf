@@ -17,7 +17,7 @@ resource "aws_security_group" "eks_cluster" {
 
 resource "aws_eks_cluster" "this" {
   name     = var.cluster_name
-  role_arn = aws_iam_role.eks_cluster.arn
+  role_arn = aws_iam_role.eks_cluster_role.arn
 
   vpc_config {
     subnet_ids         = var.subnet_ids
@@ -25,15 +25,14 @@ resource "aws_eks_cluster" "this" {
   }
 
   depends_on = [
-    aws_iam_role_policy_attachment.eks_cluster_policy,
-    aws_iam_role_policy_attachment.eks_vpc_resource_controller
+    aws_iam_role_policy_attachment.eks_cluster_policy
   ]
 }
 
 resource "aws_eks_node_group" "this" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${var.cluster_name}-node-group"
-  node_role_arn   = aws_iam_role.eks_node_group.arn
+  node_role_arn   = aws_iam_role.eks_node_role.arn
   subnet_ids      = var.subnet_ids
 
   scaling_config {
@@ -42,11 +41,11 @@ resource "aws_eks_node_group" "this" {
     max_size     = var.max_size
   }
 
-  instance_types = [var.instance_type]
+  instance_types = var.instance_types
 
   depends_on = [
     aws_iam_role_policy_attachment.eks_worker_node_policy,
     aws_iam_role_policy_attachment.eks_cni_policy,
-    aws_iam_role_policy_attachment.ec2_container_registry_readonly
+    aws_iam_role_policy_attachment.ecr_readonly
   ]
 }
