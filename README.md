@@ -97,7 +97,7 @@ helm version
 
 1. Перейдите в директорию проекта:
 ```bash
-cd lesson-7
+cd lesson-8-9
 ```
 
 2. Инициализируйте Terraform:
@@ -145,7 +145,7 @@ terraform plan
 После создания кластера подключите kubectl:
 
 ```bash
-aws eks update-kubeconfig --region us-west-2 --name lesson-7-eks --profile study
+aws eks update-kubeconfig --region us-west-2 --name lesson-8-9-eks --profile study
 ```
 
 Проверьте подключение:
@@ -168,7 +168,7 @@ aws ecr get-login-password --region us-west-2 --profile study \
 ### Получение URL репозитория
 
 ```bash
-cd lesson-7
+cd lesson-8-9
 terraform output -raw ecr_repository_url
 ```
 
@@ -193,7 +193,7 @@ docker buildx build --platform linux/amd64 \
 
 3. Проверьте, что образ запушен:
 ```bash
-aws ecr list-images --repository-name lesson-7-django-ecr --region us-west-2 --profile study
+aws ecr list-images --repository-name lesson-8-9-django-ecr --region us-west-2 --profile study
 ```
 
 ## Развертывание с Helm
@@ -204,7 +204,7 @@ aws ecr list-images --repository-name lesson-7-django-ecr --region us-west-2 --p
 
 ```yaml
 image:
-  repository: "053414411835.dkr.ecr.us-west-2.amazonaws.com/lesson-7-django-ecr"
+  repository: "053414411835.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-django-ecr"
   tag: "latest"
 ```
 
@@ -212,7 +212,7 @@ image:
 
 1. Перейдите в директорию chart:
 ```bash
-cd lesson-7/charts/django-app
+cd lesson-8-9/charts/django-app
 ```
 
 2. Проверьте chart:
@@ -280,7 +280,7 @@ EXTERNAL-IP будет доступен через несколько минут
 **Внимание:** Удаление всех ресурсов также удалит S3 bucket и DynamoDB таблицу, используемые для remote state.
 
 ```bash
-cd lesson-7
+cd lesson-8-9
 
 # Удаление Helm release
 helm uninstall django-app -n django

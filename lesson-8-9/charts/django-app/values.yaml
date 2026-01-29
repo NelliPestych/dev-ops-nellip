@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: "053414411835.dkr.ecr.us-west-2.amazonaws.com/lesson-7-django-ecr"
+  repository: "053414411835.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-django-ecr"
   tag: "latest"
   pullPolicy: IfNotPresent
 
