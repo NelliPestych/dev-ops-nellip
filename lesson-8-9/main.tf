@@ -108,7 +108,9 @@ module "argo_cd" {
   app_path = "lesson-8-9/charts/django-app"
   
   # Гілка, яку слухає ArgoCD
-  target_revision = "main"
+  # Якщо chart в цьому ж репозиторії - вкажіть назву гілки (напр: "lesson-8-9")
+  # Якщо chart в окремому репозиторії - зазвичай "main" або "master"
+  target_revision = "lesson-8-9"
   
   depends_on = [
     module.eks
