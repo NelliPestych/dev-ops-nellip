@@ -41,25 +41,21 @@ spec:
     IMAGE_TAG    = "${env.BUILD_NUMBER}"
     IMAGE        = "${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
 
-    // GitOps repo (де лежить Helm chart, який підхоплює ArgoCD)
-    GITOPS_REPO_URL = "https://github.com/NelliPestych/dev-ops-nellip.git"
-    GITOPS_BRANCH   = "main"
+    // GitOps repo (где находится Helm chart, который подхватывает ArgoCD)
+    // Для ДЗ используем этот же репозиторий, но можно указать отдельный GitOps repo
+    // Если используете отдельный GitOps репозиторий, обновите URL и путь
+    GITOPS_REPO_URL = credentials('gitops-repo-url') ?: "https://github.com/NelliPestych/dev-ops-nellip.git"
+    GITOPS_BRANCH   = "lesson-8-9"
     VALUES_PATH     = "lesson-8-9/charts/django-app/values.yaml"
   }
 
   stages {
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
-    }
-
     stage('Login to ECR (docker config for Kaniko)') {
       steps {
         container('aws') {
           sh '''
 set -e
-echo "Logging in to ECR..."
+echo "🔐 Logging in to ECR..."
 aws --version
 aws ecr get-login-password --region "$AWS_REGION" \
   | base64 | tr -d '\n' > /kaniko/.docker/password.b64
@@ -73,7 +69,6 @@ cat > /kaniko/.docker/config.json <<EOF
   }
 }
 EOF
-
 echo "✅ ECR login configured for Kaniko"
 '''
         }
@@ -85,9 +80,10 @@ echo "✅ ECR login configured for Kaniko"
         container('kaniko') {
           sh '''
 set -e
-echo "Building Docker image with Kaniko..."
+echo "🔨 Building Docker image with Kaniko..."
 echo "Image: ${IMAGE}"
 echo "Context: ${WORKSPACE}"
+echo "Dockerfile: ${WORKSPACE}/Dockerfile"
 
 /kaniko/executor \
   --context "${WORKSPACE}" \
@@ -109,7 +105,7 @@ echo "✅ Image successfully pushed to ECR: ${IMAGE}"
         container('git') {
           sh '''
 set -e
-echo "Updating GitOps repository..."
+echo "📝 Updating GitOps repository..."
 echo "Repository: ${GITOPS_REPO_URL}"
 echo "Branch: ${GITOPS_BRANCH}"
 echo "Values path: ${VALUES_PATH}"
@@ -119,18 +115,16 @@ git clone --branch "$GITOPS_BRANCH" "$GITOPS_REPO_URL" gitops
 
 cd gitops
 
-# Оновлюємо tag у values.yaml
-# Очікується структура:
-# image:
-#   repository: ...
-#   tag: ...
+# Обновляем image.tag в values.yaml
+# Ожидается структура: image.repository + image.tag
+echo "Updating image.tag to ${IMAGE_TAG} in ${VALUES_PATH}"
 sed -i.bak -E "s|(^[[:space:]]*tag:[[:space:]]*).*$|\\1\"${IMAGE_TAG}\"|g" "$VALUES_PATH"
 
-# Також оновлюємо repository якщо потрібно
+# Также обновляем repository, если нужно
 sed -i.bak -E "s|(^[[:space:]]*repository:[[:space:]]*).*$|\\1\"${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}\"|g" "$VALUES_PATH" || true
 
-echo "Changes in values.yaml:"
-git diff "$VALUES_PATH" || true
+echo "Changes in ${VALUES_PATH}:"
+git diff "$VALUES_PATH" || echo "No changes detected"
 
 git config user.name "Jenkins CI"
 git config user.email "jenkins@ci.example.com"
@@ -139,11 +133,11 @@ git add "$VALUES_PATH"
 git commit -m "ci: update image tag to ${IMAGE_TAG}
 
 - Updated image.tag to ${IMAGE_TAG}
-- Updated image.repository to ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}
-- Build number: ${BUILD_NUMBER}" || echo "Nothing to commit"
+- Image: ${IMAGE}
+- Build number: ${BUILD_NUMBER}
+- Triggered by Jenkins pipeline" || echo "Nothing to commit"
 
 git push origin "$GITOPS_BRANCH"
-
 echo "✅ GitOps repository updated. Argo CD will sync automatically."
 '''
         }
@@ -153,16 +147,15 @@ echo "✅ GitOps repository updated. Argo CD will sync automatically."
 
   post {
     success {
-      echo "✅ Pipeline successfully completed!"
+      echo "✅ Pipeline успешно завершен!"
       echo "Image: ${IMAGE}"
-      echo "GitOps repo updated with tag: ${IMAGE_TAG}"
+      echo "GitOps repo updated. Argo CD will sync automatically."
     }
     failure {
-      echo "❌ Pipeline failed. Check logs above."
+      echo "❌ Pipeline завершился с ошибкой. Проверьте логи выше."
     }
     always {
       cleanWs()
     }
   }
 }
-
