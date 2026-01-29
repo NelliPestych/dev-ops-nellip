@@ -10,6 +10,7 @@ service:
   port: 80
   targetPort: 8000
 
+# Non-sensitive configuration (stored in ConfigMap)
 config:
   DJANGO_SETTINGS_MODULE: "config.settings"
   DEBUG: "0"
@@ -18,10 +19,23 @@ config:
   DB_HOST: "db"
   DB_NAME: "postgres"
   DB_USER: "postgres"
-  DB_PASSWORD: "postgres"
   DB_PORT: "5432"
+
+# Sensitive data (stored in Kubernetes Secret)
+# ⚠️ ВАЖНО: Для production используйте внешние системы управления секретами:
+# - AWS Secrets Manager (рекомендуется для EKS)
+# - HashiCorp Vault
+# - Sealed Secrets (для GitOps)
+# - External Secrets Operator
+# 
+# См. SECURITY.md для детальных инструкций
+secrets:
   # Django secret key from lesson-4
+  # В production должен быть длинным случайным ключом
   SECRET_KEY: "django-insecure-jzx!h5%ofjiz63h5ho7c@r4lk*z9$+53%0b2d_b&mdu9*gw6&@"
+  # Database password
+  # В production должен быть сложным паролем
+  DB_PASSWORD: "postgres"
 
 resources:
   requests:

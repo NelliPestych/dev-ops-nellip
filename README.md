@@ -13,7 +13,8 @@
 - **Helm Chart** для развертывания Django-приложения:
   - Deployment с образом из ECR
   - Service типа LoadBalancer для внешнего доступа
-  - ConfigMap с переменными окружения из темы 4
+  - ConfigMap с нечувствительными переменными окружения
+  - Secret с чувствительными данными (SECRET_KEY, DB_PASSWORD)
   - HPA (Horizontal Pod Autoscaler) для автоматического масштабирования (2-6 реплик, CPU > 70%)
 
 ## Структура проекта
@@ -51,11 +52,12 @@ lesson-7/
 └── charts/
     └── django-app/
         ├── Chart.yaml
-        ├── values.yaml       # ConfigMap с переменными окружения
+        ├── values.yaml       # ConfigMap и Secret с переменными окружения
         └── templates/
             ├── deployment.yaml
             ├── service.yaml
             ├── configmap.yaml
+            ├── secret.yaml    # Kubernetes Secret для чувствительных данных
             └── hpa.yaml
 ```
 
@@ -273,7 +275,13 @@ EXTERNAL-IP будет доступен через несколько минут
 - `DB_PORT`: "5432"
 - `SECRET_KEY`: (из темы 4)
 
-Эти переменные автоматически создаются в ConfigMap и подключаются к подам через `envFrom`.
+Эти переменные разделены на:
+- **ConfigMap** (нечувствительные): `DJANGO_SETTINGS_MODULE`, `DEBUG`, `ALLOWED_HOSTS`, `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PORT`
+- **Secret** (чувствительные): `SECRET_KEY`, `DB_PASSWORD`
+
+Оба источника автоматически подключаются к подам через `envFrom`.
+
+**⚠️ Важно:** Для production окружений рекомендуется использовать внешние системы управления секретами (AWS Secrets Manager, HashiCorp Vault и т.д.). См. `SECURITY.md` для детальных рекомендаций.
 
 ## Очистка ресурсов
 
@@ -319,7 +327,18 @@ kubectl get nodes -o wide
 ✅ ECR создан и содержит загруженный Docker образ  
 ✅ Deployment, Service и HPA созданы и работают в кластере через helm  
 ✅ ConfigMap создан и используется приложением  
+✅ Secret создан для чувствительных данных (SECRET_KEY, DB_PASSWORD)  
 ✅ Проект запушен в GitHub-репозиторий в ветку lesson-7 с документацией в README.md
+
+## Безопасность
+
+Чувствительные данные (SECRET_KEY, DB_PASSWORD) хранятся в Kubernetes Secret, что является улучшением по сравнению с ConfigMap. Однако для production окружений рекомендуется использовать внешние системы управления секретами.
+
+**См. `SECURITY.md`** для детальных рекомендаций по:
+- AWS Secrets Manager
+- HashiCorp Vault
+- Sealed Secrets
+- External Secrets Operator
 
 ## Автор
 
