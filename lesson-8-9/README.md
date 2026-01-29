@@ -323,20 +323,60 @@ kubectl get svc -n django
 
 ### Как увидеть результат в Argo CD
 
-1. **Войдите в Argo CD UI** (через LoadBalancer или port-forward)
-2. **Проверьте Application:**
+#### 1. Доступ к Argo CD UI
+
+```bash
+# Получить пароль администратора
+kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo
+
+# Port-forward для доступа к UI
+kubectl port-forward -n argocd svc/argocd-server 8080:443
+```
+
+Откройте в браузере: https://localhost:8080  
+**Логин:** `admin`  
+**Пароль:** (из команды выше)
+
+#### 2. Проверка Application
+
+1. **В Argo CD UI:**
    - Application `django-app` должен быть виден
-   - Статус: **Synced** (зеленый)
-   - Health: **Healthy** (зеленый)
-3. **Проверьте ресурсы:**
-   - Deployment должен быть развернут
-   - Pods должны быть Running
-   - Service должен быть создан
-4. **Тест автоматической синхронизации:**
-   - Обновите `image.tag` в GitOps репозитории вручную
-   - Argo CD автоматически обнаружит изменение
-   - Application автоматически синхронизируется
-   - Новые поды будут развернуты с новым образом
+   - Статус: **Synced** (зеленый) ✅
+   - Health: **Healthy** (зеленый) ✅
+   - Sync Policy: **Automated** (автоматическая синхронизация)
+
+2. **Проверка ресурсов:**
+   ```bash
+   kubectl get application -n argocd django-app
+   kubectl get pods -n django
+   kubectl get svc -n django
+   ```
+
+3. **Детальная информация:**
+   ```bash
+   kubectl describe application -n argocd django-app
+   ```
+
+#### 3. Тест автоматической синхронизации
+
+1. **Обновите `image.tag` в GitOps репозитории:**
+   ```bash
+   # В GitOps репозитории (Repo B)
+   sed -i 's/tag:.*/tag: new-tag-123/' charts/django-app/values.yaml
+   git add charts/django-app/values.yaml
+   git commit -m "Test: Update image tag"
+   git push origin main
+   ```
+
+2. **Argo CD автоматически:**
+   - Обнаружит изменение (через 3 минуты polling)
+   - Начнет автоматическую синхронизацию
+   - Развернет новые поды с новым образом
+   - Удалит старые поды (prune: true)
+
+3. **Проверка в UI:**
+   - В Argo CD UI увидите статус "Syncing" → "Synced"
+   - Новые поды появятся в кластере
 
 ## GitOps Workflow
 
@@ -405,24 +445,73 @@ gitops-repo/
             └── ...
 ```
 
-### Процесс CI/CD
+### Процесс CI/CD (детальный flow)
 
-1. **Разработчик пушит код** в Repo A
-2. **Jenkins Pipeline (автоматически):**
-   - Клонирует Repo A
-   - Kaniko собирает Docker образ
-   - Пушит образ в ECR с тегом (GIT_SHA)
-   - Клонирует Repo B
-   - Обновляет `image.tag` в `values.yaml`
-   - Коммитит и пушит изменения в Repo B
-3. **Argo CD (автоматически):**
-   - Обнаруживает изменения в Repo B (через polling)
-   - Автоматически синхронизирует приложение
-   - Разворачивает новую версию в кластер
+#### Шаг 1: Разработчик пушит код
+```bash
+git push origin main  # В Repo A (App Repository)
+```
+
+#### Шаг 2: Jenkins Pipeline (автоматически запускается)
+
+**Stage 1: Checkout**
+- Jenkins клонирует Repo A с кодом приложения
+
+**Stage 2: Build and Push to ECR**
+- Kaniko собирает Docker образ из Dockerfile
+- Образ тегируется с GIT_SHA (например: `abc1234`)
+- Образ пушится в ECR:
+  - `${ECR_REPO}:${GIT_SHA}` (например: `053414411835.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-django-ecr:abc1234`)
+  - `${ECR_REPO}:latest`
+
+**Stage 3: Update GitOps Repository**
+- Jenkins клонирует Repo B (GitOps Repository)
+- Обновляет `charts/django-app/values.yaml`:
+  ```yaml
+  image:
+    repository: 053414411835.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-django-ecr
+    tag: abc1234  # ← Обновлено Jenkins
+  ```
+- Коммитит и пушит изменения в Repo B
+
+#### Шаг 3: Argo CD (автоматически синхронизирует)
+
+1. **Обнаружение изменений:**
+   - Argo CD опрашивает Repo B (polling каждые 3 минуты)
+   - Обнаруживает новый коммит с обновленным `values.yaml`
+
+2. **Автоматическая синхронизация:**
+   - Argo CD применяет изменения из Helm chart
+   - Обновляет Deployment с новым образом
+   - Разворачивает новые поды с образом `${ECR_REPO}:abc1234`
+
+3. **Результат:**
+   - Новые поды запускаются с обновленным образом
+   - Старые поды удаляются (prune: true)
+   - Приложение обновлено до новой версии
+
+#### Время выполнения
+- Jenkins Pipeline: ~5-10 минут
+- Argo CD Sync: ~1-2 минуты после push в Repo B
+- **Общее время:** ~6-12 минут от push до деплоя
 
 ## Как проверить Jenkins job
 
-### 1. Запуск Pipeline
+### 1. Доступ к Jenkins UI
+
+```bash
+# Получить пароль администратора
+kubectl get secret -n jenkins jenkins-admin-password -o jsonpath='{.data.password}' | base64 -d && echo
+
+# Port-forward для доступа к UI
+kubectl port-forward -n jenkins svc/jenkins 8080:8080
+```
+
+Откройте в браузере: http://localhost:8080  
+**Логин:** `admin`  
+**Пароль:** (из команды выше)
+
+### 2. Запуск Pipeline
 
 1. Войдите в Jenkins UI
 2. Найдите ваш Pipeline job (например: `django-app-pipeline`)

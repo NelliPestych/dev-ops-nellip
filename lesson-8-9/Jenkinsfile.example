@@ -50,8 +50,13 @@ spec:
             steps {
                 container('kaniko') {
                     script {
+                        echo "Building Docker image with Kaniko..."
+                        echo "ECR Repository: ${ECR_REPO}"
+                        echo "Image Tag: ${GIT_SHA}"
+                        
                         // Kaniko использует AWS credentials через IRSA (service account)
                         // или через mounted volume (если настроено)
+                        // Kaniko автоматически логинится в ECR используя AWS credentials
                         sh """
                         /kaniko/executor \
                           --context . \
@@ -60,8 +65,11 @@ spec:
                           --destination ${ECR_REPO}:latest \
                           --cache=true \
                           --cache-ttl=24h \
-                          --snapshot-mode=redo
+                          --snapshot-mode=redo \
+                          --verbosity=info
                         """
+                        
+                        echo "✅ Image successfully pushed to ECR: ${ECR_REPO}:${GIT_SHA}"
                     }
                 }
             }
@@ -71,25 +79,43 @@ spec:
             steps {
                 script {
                     dir('gitops') {
-                        // Клонирование GitOps репозитория
+                        echo "Cloning GitOps repository..."
+                        // Клонирование GitOps репозитория (Repo B)
                         sh """
                         git clone https://${GITHUB_PAT}@${GITOPS_REPO} .
                         git config user.name "Jenkins CI"
                         git config user.email "jenkins@ci.example.com"
                         """
                         
-                        // Обновление image.tag в values.yaml
+                        echo "Updating values.yaml with new image tag..."
+                        // Обновление image.tag в values.yaml используя sed
+                        // Это обновит тег образа для Argo CD
                         sh """
+                        # Обновляем image.tag
                         sed -i.bak 's|tag:.*|tag: ${GIT_SHA}|g' charts/django-app/values.yaml
+                        
+                        # Обновляем image.repository (если нужно)
                         sed -i.bak 's|repository:.*|repository: ${ECR_REPO}|g' charts/django-app/values.yaml || true
+                        
+                        # Проверяем изменения
+                        git diff charts/django-app/values.yaml || true
                         """
                         
-                        // Коммит и push
+                        echo "Committing and pushing changes to GitOps repository..."
+                        // Коммит и push изменений в GitOps репозиторий
+                        // Argo CD автоматически обнаружит изменения и синхронизирует
                         sh """
                         git add charts/django-app/values.yaml
-                        git commit -m "CI: Update image tag to ${GIT_SHA}" || exit 0
+                        git commit -m "CI: Update image tag to ${GIT_SHA}
+
+                        - Updated image.tag to ${GIT_SHA}
+                        - Image: ${ECR_REPO}:${GIT_SHA}
+                        - Build triggered by Jenkins pipeline" || exit 0
+                        
                         git push origin main
                         """
+                        
+                        echo "✅ GitOps repository updated. Argo CD will sync automatically."
                     }
                 }
             }
