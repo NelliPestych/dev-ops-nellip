@@ -16,6 +16,7 @@
 - **EKS кластер** для развертывания приложений
 
 ### Дополнительные файлы:
+- `Jenkinsfile` - рабочий Jenkins pipeline с Kubernetes agent (kaniko + git + awscli)
 - `Jenkinsfile.example` - пример Jenkinsfile для вашего Repo A
 - `SETUP.md` - детальная инструкция по настройке
 - `QUICK_START.md` - быстрый старт
@@ -205,8 +206,13 @@ kubectl port-forward -n jenkins svc/jenkins 8080:8080
 **Pipeline script from SCM:**
 - Repository URL: URL вашего Repo A (app repo с Dockerfile и Jenkinsfile)
 - Branch: `*/main` или `*/master`
-- Script Path: `Jenkinsfile`
+- Script Path: `Jenkinsfile` (или `lesson-8-9/Jenkinsfile` если в корне репозитория)
 - Credentials: (если репозиторий приватный)
+
+**Важно:** 
+- В репозитории должен быть `Jenkinsfile` (не только `.example`)
+- `Jenkinsfile` использует Kubernetes agent с контейнерами: kaniko, git, awscli
+- Pipeline автоматически: build → push ECR → update values.yaml → push GitOps repo
 
 ### Пример Jenkinsfile
 

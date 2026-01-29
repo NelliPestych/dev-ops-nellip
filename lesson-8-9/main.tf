@@ -96,9 +96,19 @@ module "jenkins" {
 module "argo_cd" {
   source = "./modules/argo_cd"
   
-  # Укажите URL вашего GitOps репозитория (Repo B)
-  # gitops_repo_url = "https://github.com/your-username/your-gitops-repo.git"
-  gitops_repo_url = ""
+  # ВАЖЛИВО: URL GitOps репозиторію (де лежить Helm chart для ArgoCD)
+  # Якщо використовуєте той самий репозиторій - вкажіть його URL
+  # Якщо окремий GitOps репозиторій - вкажіть його URL
+  # Наприклад: "https://github.com/NelliPestych/dev-ops-nellip.git"
+  gitops_repo_url = "https://github.com/NelliPestych/dev-ops-nellip.git"
+  
+  # Шлях до Helm chart в GitOps репозиторії
+  # Якщо chart в тому ж репозиторії: "lesson-8-9/charts/django-app"
+  # Якщо chart в окремому репозиторії: "charts/django-app"
+  app_path = "lesson-8-9/charts/django-app"
+  
+  # Гілка, яку слухає ArgoCD
+  target_revision = "main"
   
   depends_on = [
     module.eks

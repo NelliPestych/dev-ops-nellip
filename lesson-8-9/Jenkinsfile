@@ -1,0 +1,168 @@
+pipeline {
+  agent {
+    kubernetes {
+      label 'jenkins-kaniko'
+      defaultContainer 'aws'
+      yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  serviceAccountName: jenkins-sa
+  containers:
+    - name: aws
+      image: amazon/aws-cli:2.22.5
+      command: ['cat']
+      tty: true
+      env:
+        - name: AWS_DEFAULT_REGION
+          value: us-west-2
+    - name: git
+      image: alpine/git:2.45.2
+      command: ['cat']
+      tty: true
+    - name: kaniko
+      image: gcr.io/kaniko-project/executor:v1.23.2-debug
+      command: ['cat']
+      tty: true
+      volumeMounts:
+        - name: docker-config
+          mountPath: /kaniko/.docker
+  volumes:
+    - name: docker-config
+      emptyDir: {}
+"""
+    }
+  }
+
+  environment {
+    AWS_REGION   = "us-west-2"
+    AWS_ACCOUNT  = "053414411835"
+    ECR_REPO     = "lesson-8-9-django-ecr"
+    IMAGE_TAG    = "${env.BUILD_NUMBER}"
+    IMAGE        = "${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
+
+    // GitOps repo (де лежить Helm chart, який підхоплює ArgoCD)
+    GITOPS_REPO_URL = "https://github.com/NelliPestych/dev-ops-nellip.git"
+    GITOPS_BRANCH   = "main"
+    VALUES_PATH     = "lesson-8-9/charts/django-app/values.yaml"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Login to ECR (docker config for Kaniko)') {
+      steps {
+        container('aws') {
+          sh '''
+set -e
+echo "Logging in to ECR..."
+aws --version
+aws ecr get-login-password --region "$AWS_REGION" \
+  | base64 | tr -d '\n' > /kaniko/.docker/password.b64
+
+cat > /kaniko/.docker/config.json <<EOF
+{
+  "auths": {
+    "${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com": {
+      "auth": "$(echo -n "AWS:$(cat /kaniko/.docker/password.b64 | base64 --decode)" | base64 | tr -d '\n')"
+    }
+  }
+}
+EOF
+
+echo "✅ ECR login configured for Kaniko"
+'''
+        }
+      }
+    }
+
+    stage('Build & Push image to ECR (Kaniko)') {
+      steps {
+        container('kaniko') {
+          sh '''
+set -e
+echo "Building Docker image with Kaniko..."
+echo "Image: ${IMAGE}"
+echo "Context: ${WORKSPACE}"
+
+/kaniko/executor \
+  --context "${WORKSPACE}" \
+  --dockerfile "${WORKSPACE}/Dockerfile" \
+  --destination "${IMAGE}" \
+  --destination "${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:latest" \
+  --snapshotMode=redo \
+  --cache=true \
+  --verbosity=info
+
+echo "✅ Image successfully pushed to ECR: ${IMAGE}"
+'''
+        }
+      }
+    }
+
+    stage('Update values.yaml in GitOps repo') {
+      steps {
+        container('git') {
+          sh '''
+set -e
+echo "Updating GitOps repository..."
+echo "Repository: ${GITOPS_REPO_URL}"
+echo "Branch: ${GITOPS_BRANCH}"
+echo "Values path: ${VALUES_PATH}"
+
+rm -rf gitops
+git clone --branch "$GITOPS_BRANCH" "$GITOPS_REPO_URL" gitops
+
+cd gitops
+
+# Оновлюємо tag у values.yaml
+# Очікується структура:
+# image:
+#   repository: ...
+#   tag: ...
+sed -i.bak -E "s|(^[[:space:]]*tag:[[:space:]]*).*$|\\1\"${IMAGE_TAG}\"|g" "$VALUES_PATH"
+
+# Також оновлюємо repository якщо потрібно
+sed -i.bak -E "s|(^[[:space:]]*repository:[[:space:]]*).*$|\\1\"${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}\"|g" "$VALUES_PATH" || true
+
+echo "Changes in values.yaml:"
+git diff "$VALUES_PATH" || true
+
+git config user.name "Jenkins CI"
+git config user.email "jenkins@ci.example.com"
+
+git add "$VALUES_PATH"
+git commit -m "ci: update image tag to ${IMAGE_TAG}
+
+- Updated image.tag to ${IMAGE_TAG}
+- Updated image.repository to ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}
+- Build number: ${BUILD_NUMBER}" || echo "Nothing to commit"
+
+git push origin "$GITOPS_BRANCH"
+
+echo "✅ GitOps repository updated. Argo CD will sync automatically."
+'''
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "✅ Pipeline successfully completed!"
+      echo "Image: ${IMAGE}"
+      echo "GitOps repo updated with tag: ${IMAGE_TAG}"
+    }
+    failure {
+      echo "❌ Pipeline failed. Check logs above."
+    }
+    always {
+      cleanWs()
+    }
+  }
+}
+
