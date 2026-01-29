@@ -1,0 +1,19 @@
+server:
+  service:
+    type: LoadBalancer
+  ingress:
+    enabled: false
+
+configs:
+  params:
+    server.insecure: true
+
+controller:
+  replicas: 1
+
+repoServer:
+  replicas: 1
+
+applicationSet:
+  replicas: 1
+

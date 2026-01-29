@@ -1,0 +1,111 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:latest
+    command:
+    - /busybox/sh
+    - -c
+    - sleep 3600
+    volumeMounts:
+    - name: docker-config
+      mountPath: /kaniko/.docker
+    - name: aws-credentials
+      mountPath: /root/.aws
+      readOnly: true
+  volumes:
+  - name: docker-config
+    emptyDir: {}
+  # AWS credentials через secret (если не используется IRSA)
+  # - name: aws-credentials
+  #   secret:
+  #     secretName: aws-ecr-credentials
+"""
+        }
+    }
+    
+    environment {
+        // Обновите ECR_REPO на ваш URL из terraform output
+        ECR_REPO = '053414411835.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-django-ecr'
+        AWS_REGION = 'us-west-2'
+        GIT_SHA = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+        // Credentials должны быть настроены в Jenkins
+        GITOPS_REPO = credentials('gitops-repo-url')  // ID: gitops-repo-url
+        GITHUB_PAT = credentials('github-pat')        // ID: github-pat
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Build and Push to ECR') {
+            steps {
+                container('kaniko') {
+                    script {
+                        // Kaniko использует AWS credentials через IRSA (service account)
+                        // или через mounted volume (если настроено)
+                        sh """
+                        /kaniko/executor \
+                          --context . \
+                          --dockerfile Dockerfile \
+                          --destination ${ECR_REPO}:${GIT_SHA} \
+                          --destination ${ECR_REPO}:latest \
+                          --cache=true \
+                          --cache-ttl=24h \
+                          --snapshot-mode=redo
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Update GitOps Repository') {
+            steps {
+                script {
+                    dir('gitops') {
+                        // Клонирование GitOps репозитория
+                        sh """
+                        git clone https://${GITHUB_PAT}@${GITOPS_REPO} .
+                        git config user.name "Jenkins CI"
+                        git config user.email "jenkins@ci.example.com"
+                        """
+                        
+                        // Обновление image.tag в values.yaml
+                        sh """
+                        sed -i.bak 's|tag:.*|tag: ${GIT_SHA}|g' charts/django-app/values.yaml
+                        sed -i.bak 's|repository:.*|repository: ${ECR_REPO}|g' charts/django-app/values.yaml || true
+                        """
+                        
+                        // Коммит и push
+                        sh """
+                        git add charts/django-app/values.yaml
+                        git commit -m "CI: Update image tag to ${GIT_SHA}" || exit 0
+                        git push origin main
+                        """
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "Pipeline успешно завершен. Образ ${ECR_REPO}:${GIT_SHA} запушен в ECR."
+        }
+        failure {
+            echo "Pipeline завершился с ошибкой. Проверьте логи."
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
+

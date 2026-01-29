@@ -1,0 +1,23 @@
+# Argo CD Applications
+# Применяется через Terraform с переопределением значений
+applications:
+  - name: django-app
+    namespace: argocd
+    project: default
+    repoURL: ""  # Укажите URL вашего GitOps репозитория в main.tf
+    targetRevision: main
+    path: charts/django-app
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: django
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+
+# Argo CD Repositories (опционально)
+# Можно добавить приватные репозитории через secrets
+repositories: []
+

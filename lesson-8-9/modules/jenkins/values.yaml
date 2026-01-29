@@ -1,0 +1,58 @@
+controller:
+  serviceAccount:
+    create: true
+    name: jenkins-sa
+  
+  serviceType: LoadBalancer
+  
+  installPlugins:
+    - kubernetes:latest
+    - workflow-aggregator:latest
+    - git:latest
+    - configuration-as-code:latest
+  
+  JCasC:
+    defaultConfig: true
+  
+  agent:
+    enabled: true
+    defaultsProviderTemplate: "default"
+    kubernetesConnectTimeout: 5
+    kubernetesReadTimeout: 15
+    maxRequestsPerHost: 32
+    namespace: "jenkins"
+    jenkinsUrl: ""
+    jenkinsTunnel: ""
+    connectTimeout: 100
+    readTimeout: 100
+    containerCap: 10
+    maxRequestsPerHostStr: "32"
+    waitForSlaves: false
+    websocket: false
+    directConnection: false
+    disabled: false
+    containerCapStr: "10"
+    retentionTimeout: 5
+    templates:
+      - name: "default"
+        label: "default"
+        nodeUsageMode: "NORMAL"
+        containers:
+          - name: "kaniko"
+            image: "gcr.io/kaniko-project/executor:latest"
+            command: "/busybox/sh"
+            args: "-c"
+            ttyEnabled: true
+            privileged: true
+            resourceRequestCpu: "400m"
+            resourceRequestMemory: "1Gi"
+            resourceLimitCpu: "1"
+            resourceLimitMemory: "2Gi"
+
+persistence:
+  enabled: true
+  size: 8Gi
+  # Используем стандартный StorageClass (EBS CSI Driver создаст его автоматически)
+  # Если нужен конкретный StorageClass, укажите его имя
+  storageClass: ""
+
