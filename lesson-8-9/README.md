@@ -574,6 +574,23 @@ kubectl describe application -n argocd django-app
 - ✅ Инструкции по проверке результата в Argo CD
 - ✅ Схема CI/CD процесса (ASCII диаграмма)
 
+### ✅ Безопасность (рекомендация ментора)
+
+- ✅ Чувствительные данные (SECRET_KEY, DB_PASSWORD) вынесены в Kubernetes Secret
+- ✅ ConfigMap содержит только нечувствительные данные
+- ✅ Создан SECURITY.md с рекомендациями для production
+- ✅ Документация по использованию AWS Secrets Manager, Vault и других решений
+
+## Безопасность
+
+Чувствительные данные (SECRET_KEY, DB_PASSWORD) в Helm chart для Django-приложения хранятся в Kubernetes Secret, что является улучшением по сравнению с ConfigMap. Однако для production окружений рекомендуется использовать внешние системы управления секретами.
+
+**См. `SECURITY.md`** для детальных рекомендаций по:
+- AWS Secrets Manager
+- HashiCorp Vault
+- Sealed Secrets
+- External Secrets Operator
+
 ## Дополнительные ресурсы
 
 - [Jenkins Kubernetes Plugin](https://plugins.jenkins.io/kubernetes/)
