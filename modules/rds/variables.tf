@@ -13,6 +13,17 @@ variable "engine" {
   description = "DB engine. For RDS: postgres/mysql. For Aurora: aurora-postgresql/aurora-mysql."
   type        = string
   default     = "postgres"
+
+  validation {
+    condition = (
+      var.use_aurora ? (
+        can(regex("^aurora-", var.engine))
+        ) : (
+        !can(regex("^aurora-", var.engine))
+      )
+    )
+    error_message = "If use_aurora is true, engine must start with 'aurora-' (e.g. aurora-postgresql, aurora-mysql). If use_aurora is false, engine must NOT start with 'aurora-' (e.g. postgres, mysql)."
+  }
 }
 
 variable "engine_version" {

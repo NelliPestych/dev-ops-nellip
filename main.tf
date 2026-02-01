@@ -7,9 +7,21 @@ terraform {
   }
 }
 
+variable "aws_region" {
+  description = "AWS region for resources"
+  type        = string
+  default     = "us-west-2"
+}
+
+variable "aws_profile" {
+  description = "AWS profile to use"
+  type        = string
+  default     = "study"
+}
+
 provider "aws" {
-  region  = "us-west-2"
-  profile = "study"
+  region  = var.aws_region
+  profile = var.aws_profile
 }
 
 # VPC модуль

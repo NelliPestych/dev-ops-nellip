@@ -86,7 +86,13 @@ module "rds" {
 - **subnet_ids** (list(string)): Private subnet ids for DB subnet group
 - **password** (string, sensitive): Master password
 
-### Optional Variables
+### Root Variables (in main.tf)
+
+- **aws_region** (string, default: `"us-west-2"`): AWS region for resources
+- **aws_profile** (string, default: `"study"`): AWS profile to use
+- **db_password** (string, sensitive): Master password for database
+
+### Module Variables (in modules/rds)
 
 - **use_aurora** (bool, default: `false`): If `true` → Aurora cluster + writer, if `false` → standard RDS instance
 - **engine** (string, default: `"postgres"`): DB engine. For RDS: `postgres`/`mysql`. For Aurora: `aurora-postgresql`/`aurora-mysql`
@@ -118,12 +124,22 @@ engine = "postgres"
 parameter_group_family = "postgres15" # if needed
 ```
 
+**Parameter Group Families for PostgreSQL:**
+- `postgres15` - PostgreSQL 15.x
+- `postgres14` - PostgreSQL 14.x
+- `postgres13` - PostgreSQL 13.x
+- `postgres12` - PostgreSQL 12.x
+
 ### Standard MySQL:
 ```hcl
 use_aurora = false
 engine = "mysql"
 parameter_group_family = "mysql8.0" # if needed
 ```
+
+**Parameter Group Families for MySQL:**
+- `mysql8.0` - MySQL 8.0.x
+- `mysql5.7` - MySQL 5.7.x
 
 ### Aurora PostgreSQL:
 ```hcl
@@ -132,12 +148,27 @@ engine = "aurora-postgresql"
 parameter_group_family = "aurora-postgresql15" # if needed
 ```
 
+**Parameter Group Families for Aurora PostgreSQL:**
+- `aurora-postgresql15` - Aurora PostgreSQL 15.x
+- `aurora-postgresql14` - Aurora PostgreSQL 14.x
+- `aurora-postgresql13` - Aurora PostgreSQL 13.x
+- `aurora-postgresql12` - Aurora PostgreSQL 12.x
+
 ### Aurora MySQL:
 ```hcl
 use_aurora = true
 engine = "aurora-mysql"
 parameter_group_family = "aurora-mysql8.0" # if needed
 ```
+
+**Parameter Group Families for Aurora MySQL:**
+- `aurora-mysql8.0` - Aurora MySQL 8.0.x
+- `aurora-mysql5.7` - Aurora MySQL 5.7.x
+
+**⚠️ Important:** 
+- If `use_aurora = true`, `engine` MUST start with `aurora-` (e.g. `aurora-postgresql`, `aurora-mysql`)
+- If `use_aurora = false`, `engine` MUST NOT start with `aurora-` (e.g. `postgres`, `mysql`)
+- The module includes validation to enforce this rule
 
 ## Module Features
 
