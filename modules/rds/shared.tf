@@ -10,13 +10,33 @@ locals {
 
   db_port = coalesce(var.port, local.default_port)
 
-  # Try to infer family if not provided (minimal mapping, you can override via var.parameter_group_family)
+  # Family names differ by engine:
+  # - Postgres / aurora-postgresql use only MAJOR version (e.g. postgres16, aurora-postgresql16)
+  # - MySQL / aurora-mysql use MAJOR.MINOR (e.g. mysql8.0, aurora-mysql8.0)
+  engine_version_parts = var.engine_version != null ? split(".", var.engine_version) : []
+  major                = length(local.engine_version_parts) > 0 ? local.engine_version_parts[0] : "15"
+  major_minor          = length(local.engine_version_parts) >= 2 ? "${local.engine_version_parts[0]}.${local.engine_version_parts[1]}" : local.major
+
+  is_mysql_family = can(regex("mysql", var.engine))
+  family_suffix   = local.is_mysql_family ? local.major_minor : local.major
+
+  # Build family name: engine + version suffix
+  # For postgres: postgres15, postgres16, etc.
+  # For mysql: mysql8.0, mysql5.7, etc.
+  # For aurora-postgresql: aurora-postgresql15, aurora-postgresql16, etc.
+  # For aurora-mysql: aurora-mysql8.0, aurora-mysql5.7, etc.
+  computed_family = "${var.engine}${local.family_suffix}"
+
+  # Use explicit parameter_group_family if provided, otherwise use computed family
+  # If engine_version is null, fall back to inferred defaults
   inferred_family = (
-    local.is_aurora && var.engine == "aurora-postgresql" ? "aurora-postgresql15" :
-    local.is_aurora && var.engine == "aurora-mysql" ? "aurora-mysql8.0" :
-    (!local.is_aurora && var.engine == "postgres") ? "postgres15" :
-    (!local.is_aurora && var.engine == "mysql") ? "mysql8.0" :
-    null
+    var.engine_version != null ? local.computed_family : (
+      local.is_aurora && var.engine == "aurora-postgresql" ? "aurora-postgresql15" :
+      local.is_aurora && var.engine == "aurora-mysql" ? "aurora-mysql8.0" :
+      (!local.is_aurora && var.engine == "postgres") ? "postgres15" :
+      (!local.is_aurora && var.engine == "mysql") ? "mysql8.0" :
+      null
+    )
   )
 
   param_family = coalesce(var.parameter_group_family, local.inferred_family)
@@ -105,4 +125,3 @@ resource "aws_rds_cluster_parameter_group" "aurora" {
 
   tags = merge(var.tags, { Name = "${var.name}-aurora-pg" })
 }
-
