@@ -8,5 +8,5 @@ eks_cluster_name      = "devops-cluster"
 eks_node_group_size   = 2
 rds_instance_class    = "db.t3.micro"
 rds_db_name           = "djangodb"
-rds_username          = "admin"
+rds_username          = "dbadmin"
 rds_password          = "YourSecurePassword123!"
