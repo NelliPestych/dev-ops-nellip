@@ -84,8 +84,6 @@ module "jenkins" {
   cluster_ca       = module.eks.cluster_ca
   cluster_token    = module.eks.cluster_token
   chart_version    = var.jenkins_chart_version
-
-  depends_on = [module.eks]
 }
 
 # Модуль Argo CD
@@ -97,8 +95,6 @@ module "argo_cd" {
   cluster_ca       = module.eks.cluster_ca
   cluster_token    = module.eks.cluster_token
   chart_version    = var.argocd_chart_version
-
-  depends_on = [module.eks]
 }
 
 # Модуль Monitoring (Prometheus & Grafana)
@@ -109,6 +105,4 @@ module "monitoring" {
   cluster_endpoint = module.eks.cluster_endpoint
   cluster_ca       = module.eks.cluster_ca
   cluster_token    = module.eks.cluster_token
-
-  depends_on = [module.eks]
 }
