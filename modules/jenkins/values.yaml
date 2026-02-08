@@ -27,7 +27,7 @@ controller:
 persistence:
   enabled: true
   size: 8Gi
-  storageClass: "gp3"
+  storageClass: "gp2"
 
 agent:
   enabled: true

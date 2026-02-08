@@ -13,7 +13,7 @@ prometheus:
       volumeClaimTemplate:
         spec:
           accessModes: ["ReadWriteOnce"]
-          storageClassName: "gp3"
+          storageClassName: "gp2"
           resources:
             requests:
               storage: 20Gi
@@ -29,7 +29,7 @@ grafana:
   
   persistence:
     enabled: true
-    storageClassName: "gp3"
+    storageClassName: "gp2"
     size: 10Gi
   
   resources:
