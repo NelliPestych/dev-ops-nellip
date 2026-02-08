@@ -1,0 +1,36 @@
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
+  
+  serviceType: ClusterIP
+  servicePort: 8080
+  
+  installPlugins:
+    - kubernetes:latest
+    - workflow-aggregator:latest
+    - git:latest
+    - configuration-as-code:latest
+    - docker-workflow:latest
+    - blueocean:latest
+  
+  jenkinsUrl: "http://jenkins:8080"
+  
+  ingress:
+    enabled: false
+
+persistence:
+  enabled: true
+  size: 8Gi
+  storageClass: "gp3"
+
+agent:
+  enabled: true
+  defaultsProviderTemplate: "default"
+  podRetention: "Never"
+  containerCap: 10

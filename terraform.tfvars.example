@@ -1,0 +1,12 @@
+aws_region            = "us-east-1"
+environment           = "dev"
+project_name          = "devops-nellip"
+s3_bucket_name        = "devops-nellip-terraform-state"
+dynamodb_table_name   = "terraform-state-lock"
+ecr_repository_name   = "django-app"
+eks_cluster_name      = "devops-cluster"
+eks_node_group_size   = 2
+rds_instance_class    = "db.t3.micro"
+rds_db_name           = "djangodb"
+rds_username          = "admin"
+rds_password          = "YourSecurePassword123!"

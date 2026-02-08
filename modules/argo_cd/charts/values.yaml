@@ -1,0 +1,20 @@
+namespace: argocd
+
+repositories:
+  - name: django-app-repo
+    url: https://github.com/your-org/django-app  # Замініть на ваш репозиторій
+    type: git
+
+applications:
+  - name: django-app
+    namespace: default
+    project: default
+    repoURL: https://github.com/your-org/django-app  # Замініть на ваш репозиторій
+    targetRevision: main
+    path: charts/django-app
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true

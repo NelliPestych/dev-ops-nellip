@@ -1,0 +1,51 @@
+replicaCount: 2
+
+image:
+  repository: ""  # Буде заповнено з ECR
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: django.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: "250m"
+    memory: "512Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+configMap:
+  # Django settings
+  DEBUG: "False"
+  ALLOWED_HOSTS: "*"
+  DATABASE_HOST: ""  # Буде заповнено з RDS endpoint
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "djangodb"
+  DATABASE_USER: "admin"
+  DATABASE_PASSWORD: ""  # Буде заповнено з Secret
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

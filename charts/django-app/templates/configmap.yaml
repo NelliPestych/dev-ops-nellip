@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "django-app.fullname" . }}-config
+  labels:
+    {{- include "django-app.labels" . | nindent 4 }}
+data:
+  DEBUG: {{ .Values.configMap.DEBUG | quote }}
+  ALLOWED_HOSTS: {{ .Values.configMap.ALLOWED_HOSTS | quote }}
+  DATABASE_HOST: {{ .Values.configMap.DATABASE_HOST | quote }}
+  DATABASE_PORT: {{ .Values.configMap.DATABASE_PORT | quote }}
+  DATABASE_NAME: {{ .Values.configMap.DATABASE_NAME | quote }}
+  DATABASE_USER: {{ .Values.configMap.DATABASE_USER | quote }}
