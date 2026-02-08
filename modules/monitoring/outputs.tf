@@ -15,6 +15,6 @@ output "grafana_url" {
 
 output "grafana_admin_password" {
   description = "Grafana admin password"
-  value       = "admin"  # Змініть в продакшені!
+  value       = "admin" # Змініть в продакшені!
   sensitive   = true
 }

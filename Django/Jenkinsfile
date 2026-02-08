@@ -44,6 +44,7 @@ pipeline {
                 script {
                     withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
                         sh '''
+                            AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
                             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
                             docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}
                             docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:latest
@@ -55,17 +56,8 @@ pipeline {
             }
         }
         
-        stage('Deploy to EKS') {
-            steps {
-                script {
-                    withKubeConfig([credentialsId: 'eks-credentials']) {
-                        sh '''
-                            kubectl set image deployment/django-app django-app=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG} -n default || kubectl apply -f charts/django-app/
-                        '''
-                    }
-                }
-            }
-        }
+        # Deploy is handled by Argo CD (GitOps)
+        # Argo CD will automatically sync the application when new image is pushed to ECR
     }
     
     post {

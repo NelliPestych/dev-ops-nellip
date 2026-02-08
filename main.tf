@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -25,20 +25,10 @@ provider "aws" {
   region = var.aws_region
 }
 
-# Модуль S3 Backend (має бути створений першим)
-module "s3_backend" {
-  source = "./modules/s3-backend"
-  
-  bucket_name = var.s3_bucket_name
-  table_name  = var.dynamodb_table_name
-  environment = var.environment
-  project_name = var.project_name
-}
-
 # Модуль VPC
 module "vpc" {
   source = "./modules/vpc"
-  
+
   vpc_cidr           = var.vpc_cidr
   availability_zones = var.availability_zones
   environment        = var.environment
@@ -48,7 +38,7 @@ module "vpc" {
 # Модуль ECR
 module "ecr" {
   source = "./modules/ecr"
-  
+
   repository_name = var.ecr_repository_name
   environment     = var.environment
   project_name    = var.project_name
@@ -57,21 +47,21 @@ module "ecr" {
 # Модуль EKS
 module "eks" {
   source = "./modules/eks"
-  
+
   cluster_name    = var.eks_cluster_name
   vpc_id          = module.vpc.vpc_id
   subnet_ids      = module.vpc.private_subnet_ids
   environment     = var.environment
   node_group_size = var.eks_node_group_size
   project_name    = var.project_name
-  
+
   depends_on = [module.vpc]
 }
 
 # Модуль RDS
 module "rds" {
   source = "./modules/rds"
-  
+
   vpc_id             = module.vpc.vpc_id
   subnet_ids         = module.vpc.database_subnet_ids
   security_group_ids = [module.vpc.database_security_group_id]
@@ -81,44 +71,44 @@ module "rds" {
   db_username        = var.rds_username
   db_password        = var.rds_password
   project_name       = var.project_name
-  
+
   depends_on = [module.vpc]
 }
 
 # Модуль Jenkins
 module "jenkins" {
   source = "./modules/jenkins"
-  
+
   cluster_name     = module.eks.cluster_name
   cluster_endpoint = module.eks.cluster_endpoint
   cluster_ca       = module.eks.cluster_ca
   cluster_token    = module.eks.cluster_token
   chart_version    = var.jenkins_chart_version
-  
+
   depends_on = [module.eks]
 }
 
 # Модуль Argo CD
 module "argo_cd" {
   source = "./modules/argo_cd"
-  
+
   cluster_name     = module.eks.cluster_name
   cluster_endpoint = module.eks.cluster_endpoint
   cluster_ca       = module.eks.cluster_ca
   cluster_token    = module.eks.cluster_token
   chart_version    = var.argocd_chart_version
-  
+
   depends_on = [module.eks]
 }
 
 # Модуль Monitoring (Prometheus & Grafana)
 module "monitoring" {
   source = "./modules/monitoring"
-  
+
   cluster_name     = module.eks.cluster_name
   cluster_endpoint = module.eks.cluster_endpoint
   cluster_ca       = module.eks.cluster_ca
   cluster_token    = module.eks.cluster_token
-  
+
   depends_on = [module.eks]
 }

@@ -28,18 +28,6 @@ variable "availability_zones" {
   default     = ["us-east-1a", "us-east-1b"]
 }
 
-variable "s3_bucket_name" {
-  description = "S3 bucket name for Terraform state"
-  type        = string
-  default     = "devops-nellip-terraform-state"
-}
-
-variable "dynamodb_table_name" {
-  description = "DynamoDB table name for state locking"
-  type        = string
-  default     = "terraform-state-lock"
-}
-
 variable "ecr_repository_name" {
   description = "ECR repository name"
   type        = string

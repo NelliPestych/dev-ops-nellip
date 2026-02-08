@@ -6,13 +6,19 @@
 
 ```
 Project/
-├── main.tf              # Головний файл для підключення модулів
-├── backend.tf           # Налаштування бекенду для стейтів (S3 + DynamoDB)
-├── outputs.tf           # Загальні виводи ресурсів
-├── variables.tf         # Змінні
-├── terraform.tfvars     # Значення змінних
+├── bootstrap/           # Bootstrap проєкт для створення S3/DynamoDB backend
+│  ├── main.tf
+│  ├── variables.tf
+│  ├── outputs.tf
+│  └── terraform.tfvars
 │
-├── modules/             # Каталог з усіма модулями
+├── main.tf              # Головний файл для підключення модулів
+├── backend.tf           # Налаштування remote бекенду для стейтів (S3 + DynamoDB)
+├── outputs.tf           # Загальні виводи ресурсів
+├── variables.tf          # Змінні
+├── terraform.tfvars      # Значення змінних
+│
+├── modules/              # Каталог з усіма модулями
 │  ├── s3-backend/       # Модуль для S3 та DynamoDB
 │  ├── vpc/              # Модуль для VPC
 │  ├── ecr/              # Модуль для ECR
@@ -25,7 +31,7 @@ Project/
 ├── charts/              # Helm чарти
 │  └── django-app/       # Helm чарт для Django додатку
 │
-└── Django/              # Django додаток
+└── Django/               # Django додаток
    ├── app/
    ├── Dockerfile
    ├── Jenkinsfile
@@ -40,45 +46,64 @@ Project/
 4. Helm 3.x встановлений
 5. Docker встановлений
 
-## Встановлення
+## Порядок запуску
 
-### 1. Підготовка S3 Backend
+### 1. Bootstrap Backend (S3 + DynamoDB)
 
-**ВАЖЛИВО**: Перед використанням Terraform backend, потрібно створити S3 bucket та DynamoDB таблицю вручну або через окремий скрипт.
+**ВАЖЛИВО**: Спочатку потрібно створити S3 bucket та DynamoDB таблицю для збереження Terraform state. Це робиться через окремий bootstrap проєкт з локальним state.
 
 ```bash
-# Створіть S3 bucket
-aws s3 mb s3://devops-nellip-terraform-state --region us-east-1
+cd bootstrap
 
-# Створіть DynamoDB таблицю
-aws dynamodb create-table \
-  --table-name terraform-state-lock \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region us-east-1
+# Відредагуйте terraform.tfvars з вашими значеннями
+# Особливо важливо: bucket name має бути globally unique!
+
+terraform init
+terraform plan
+terraform apply
 ```
 
-### 2. Налаштування змінних
+Після успішного створення backend, переконайтеся що значення в `bootstrap/terraform.tfvars` відповідають значенням в `backend.tf` в корені проєкту.
 
-Відредагуйте `terraform.tfvars` та встановіть необхідні значення:
+### 2. Налаштування змінних основного проєкту
+
+Відредагуйте `terraform.tfvars` в корені проєкту та встановіть необхідні значення:
 
 ```hcl
 aws_region            = "us-east-1"
 rds_password          = "YourSecurePassword123!"  # Змініть на безпечний пароль
 ```
 
-### 3. Ініціалізація Terraform
+### 3. Ініціалізація основного Terraform проєкту
 
 ```bash
-terraform init
+cd ..
+terraform init -reconfigure
 ```
+
+Флаг `-reconfigure` необхідний для налаштування remote backend після створення S3 bucket.
 
 ### 4. Розгортання інфраструктури
 
 ```bash
 terraform plan
 terraform apply
+```
+
+Це займе приблизно 20-30 хвилин для створення всієї інфраструктури.
+
+### 5. Налаштування kubectl
+
+Після створення EKS кластера, налаштуйте kubectl:
+
+```bash
+aws eks update-kubeconfig --name devops-cluster --region us-east-1
+```
+
+Перевірте підключення:
+
+```bash
+kubectl get nodes
 ```
 
 ## Використання
@@ -143,13 +168,41 @@ kubectl get all -n monitoring
 kubectl get all -n default
 ```
 
-## Видалення інфраструктури
+## Port-forward команди
 
-⚠️ **УВАГА**: При видаленні всієї інфраструктури за допомогою `terraform destroy` ви також видаляєте S3-бакет і DynamoDB-таблицю, які використовуються для збереження Terraform стейту.
-
-Якщо потрібно зберегти стейт, видаліть ресурси вручну або використайте `terraform destroy -target` для селективного видалення.
+Для доступу до сервісів через port-forward:
 
 ```bash
+# Jenkins
+kubectl port-forward svc/jenkins 8080:8080 -n jenkins
+
+# Argo CD
+kubectl port-forward svc/argocd-server 8081:443 -n argocd
+
+# Grafana
+kubectl port-forward svc/kube-prometheus-stack-grafana 3000:80 -n monitoring
+
+# Prometheus
+kubectl port-forward svc/kube-prometheus-stack-prometheus 9090:9090 -n monitoring
+```
+
+## Видалення інфраструктури
+
+⚠️ **УВАГА**: 
+
+1. **Основна інфраструктура**: При видаленні основної інфраструктури через `terraform destroy` в корені проєкту, S3 bucket та DynamoDB таблиця НЕ будуть видалені (вони створені через bootstrap).
+
+2. **Bootstrap backend**: Якщо потрібно видалити S3 bucket та DynamoDB таблицю, виконайте:
+   ```bash
+   cd bootstrap
+   terraform destroy
+   ```
+   **УВАГА**: Це видалить backend для Terraform state! Виконайте це тільки якщо ви впевнені, що більше не потрібен state.
+
+Для видалення основної інфраструктури:
+
+```bash
+# В корені проєкту
 terraform destroy
 ```
 
@@ -159,7 +212,8 @@ Jenkins pipeline автоматично:
 1. Білдить Docker образ Django додатку
 2. Запускає тести
 3. Пушить образ в ECR
-4. Деплоїть в EKS
+
+**Деплой**: Деплой в EKS виконується автоматично через Argo CD (GitOps). Argo CD відстежує зміни в репозиторії та автоматично синхронізує додаток при оновленні образів.
 
 ## Моніторинг
 

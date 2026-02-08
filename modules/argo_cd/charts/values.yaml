@@ -2,15 +2,15 @@ namespace: argocd
 
 repositories:
   - name: django-app-repo
-    url: https://github.com/your-org/django-app  # Замініть на ваш репозиторій
+    url: https://github.com/NelliPestych/dev-ops-nellip.git
     type: git
 
 applications:
   - name: django-app
     namespace: default
     project: default
-    repoURL: https://github.com/your-org/django-app  # Замініть на ваш репозиторій
-    targetRevision: main
+    repoURL: https://github.com/NelliPestych/dev-ops-nellip.git
+    targetRevision: final_project
     path: charts/django-app
     syncPolicy:
       automated:

@@ -36,5 +36,5 @@ output "argocd_url" {
 
 output "grafana_url" {
   description = "Grafana URL"
-  value       = "http://localhost:3000 (use: kubectl port-forward svc/grafana 3000:80 -n monitoring)"
+  value       = "http://localhost:3000 (use: kubectl port-forward svc/kube-prometheus-stack-grafana 3000:80 -n monitoring)"
 }

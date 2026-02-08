@@ -1,0 +1,9 @@
+region               = "us-east-1"
+aws_profile          = "default"
+project_name         = "devops-nellip"
+env                  = "dev"
+
+# IMPORTANT: bucket name must be globally unique!
+tf_state_bucket_name = "devops-nellip-REPLACE_ME-tfstate-dev"
+tf_lock_table_name   = "devops-nellip-REPLACE_ME-tflock-dev"
+
