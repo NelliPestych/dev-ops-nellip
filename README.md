@@ -248,6 +248,8 @@ Jenkins pipeline автоматично виконує наступні крок
 4. Argo CD виконує deploy/rollout нового образу в EKS
 5. Додаток оновлюється з новим образом
 
+**Важливо**: Перший деплой додатку робиться після першого успішного запуску Jenkins pipeline, оскільки `charts/django-app/values.yaml` має порожній `image.repository` до першого pipeline run. Після першого pipeline Jenkins заповнить реальний ECR URL, і Argo CD зможе виконати деплой.
+
 ## Моніторинг
 
 - **Prometheus**: Збір метрик

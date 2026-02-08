@@ -82,14 +82,17 @@ pipeline {
                             pwd
                             ls -la
                             
-                            # Get ECR repo URL
+                            # Get ECR repo URL and export for Python
                             AWS_ACCOUNT_ID=\$(aws sts get-caller-identity --query Account --output text)
-                            ECR_REPO_URL="\${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}"
+                            export ECR_REPO_URL="\${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}"
                             echo "ECR Repo URL: \${ECR_REPO_URL}"
                             echo "Updating ${VALUES_FILE} with image tag ${BUILD_NUMBER}"
                             
                             # Check if values file exists
                             test -f ${VALUES_FILE} || { echo "ERROR: ${VALUES_FILE} not found!"; exit 1; }
+                            
+                            # Check pip availability
+                            python3 -m pip --version || { echo "ERROR: pip not available!"; exit 1; }
                             
                             # Install pyyaml if not available
                             python3 -m pip install --user pyyaml 2>/dev/null || pip3 install --user pyyaml 2>/dev/null || true
@@ -105,7 +108,7 @@ data = yaml.safe_load(p.read_text())
 
 # Update image section
 data.setdefault("image", {})
-data["image"]["repository"] = "\${ECR_REPO_URL}"
+data["image"]["repository"] = os.environ["ECR_REPO_URL"]
 data["image"]["tag"] = str("${BUILD_NUMBER}")
 data["image"]["pullPolicy"] = data["image"].get("pullPolicy", "Always")
 
