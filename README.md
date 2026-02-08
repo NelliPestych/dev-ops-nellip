@@ -206,14 +206,47 @@ kubectl port-forward svc/kube-prometheus-stack-prometheus 9090:9090 -n monitorin
 terraform destroy
 ```
 
-## CI/CD Pipeline
+## CI/CD Pipeline (GitOps)
 
-Jenkins pipeline автоматично:
-1. Білдить Docker образ Django додатку
-2. Запускає тести
-3. Пушить образ в ECR
+Jenkins pipeline автоматично виконує наступні кроки:
 
-**Деплой**: Деплой в EKS виконується автоматично через Argo CD (GitOps). Argo CD відстежує зміни в репозиторії та автоматично синхронізує додаток при оновленні образів.
+1. **Build**: Білдить Docker образ Django додатку
+2. **Test**: Запускає тести
+3. **Push to ECR**: Пушить образ в ECR з тегом BUILD_NUMBER
+4. **Update Helm values**: Оновлює `charts/django-app/values.yaml` з новим image.repository та image.tag
+5. **Commit & Push**: Комітить зміни в гілку `final_project` та пушить в репозиторій
+
+**Деплой через Argo CD (GitOps)**:
+- Argo CD з auto-sync відстежує зміни в репозиторії
+- При виявленні нового commit з оновленими values.yaml, Argo CD автоматично синхронізує додаток
+- Виконується deploy/rollout нового образу в EKS
+
+### Jenkins Credentials
+
+Для роботи pipeline потрібні наступні credentials в Jenkins:
+
+1. **github_pat** (Secret text):
+   - GitHub Personal Access Token з правами `repo`
+   - Використовується для push змін в репозиторій
+   - Створіть токен: GitHub Settings → Developer settings → Personal access tokens
+
+2. **aws-credentials** (AWS credentials):
+   - AWS Access Key ID та Secret Access Key
+   - Використовується для доступу до ECR та EKS
+
+### CI/CD Demo
+
+**Сценарій роботи:**
+
+1. Розробник пушить код в репозиторій
+2. Jenkins запускає pipeline:
+   - Build Docker image
+   - Push в ECR (tag: BUILD_NUMBER)
+   - Оновлює `charts/django-app/values.yaml` (image.repository + image.tag)
+   - Commit + push у гілку `final_project`
+3. Argo CD (auto-sync) підтягує зміни з репозиторію
+4. Argo CD виконує deploy/rollout нового образу в EKS
+5. Додаток оновлюється з новим образом
 
 ## Моніторинг
 

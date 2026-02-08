@@ -4,13 +4,25 @@ pipeline {
     environment {
         AWS_REGION = 'us-east-1'
         ECR_REPOSITORY = 'django-app'
+        ECR_REPO_NAME = 'django-app'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
+        GIT_BRANCH = 'final_project'
+        VALUES_FILE = 'charts/django-app/values.yaml'
     }
     
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+        
+        stage('Setup Python dependencies') {
+            steps {
+                sh '''
+                    python3 --version || echo "Python3 not found, installing..."
+                    python3 -m pip install --user pyyaml || pip3 install --user pyyaml || echo "pip install failed, will try in next stage"
+                '''
             }
         }
         
@@ -45,19 +57,129 @@ pipeline {
                     withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
                         sh '''
                             AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                            docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}
-                            docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:latest
-                            docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}
-                            docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:latest
+                            ECR_REPO_URL="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}"
+                            
+                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO_URL}
+                            docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${ECR_REPO_URL}:${IMAGE_TAG}
+                            docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${ECR_REPO_URL}:latest
+                            docker push ${ECR_REPO_URL}:${IMAGE_TAG}
+                            docker push ${ECR_REPO_URL}:latest
                         '''
                     }
                 }
             }
         }
         
-        # Deploy is handled by Argo CD (GitOps)
-        # Argo CD will automatically sync the application when new image is pushed to ECR
+        stage('Update Helm values (GitOps)') {
+            steps {
+                script {
+                    withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
+                        sh """
+                            set -euo pipefail
+                            
+                            # Ensure we are at repo root
+                            cd ${WORKSPACE}
+                            pwd
+                            ls -la
+                            
+                            # Get ECR repo URL
+                            AWS_ACCOUNT_ID=\$(aws sts get-caller-identity --query Account --output text)
+                            ECR_REPO_URL="\${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}"
+                            echo "ECR Repo URL: \${ECR_REPO_URL}"
+                            echo "Updating ${VALUES_FILE} with image tag ${BUILD_NUMBER}"
+                            
+                            # Check if values file exists
+                            test -f ${VALUES_FILE} || { echo "ERROR: ${VALUES_FILE} not found!"; exit 1; }
+                            
+                            # Install pyyaml if not available
+                            python3 -m pip install --user pyyaml 2>/dev/null || pip3 install --user pyyaml 2>/dev/null || true
+                            
+                            # Update values.yaml using Python
+                            python3 - <<PY
+import yaml
+from pathlib import Path
+import os
+
+p = Path("${VALUES_FILE}")
+data = yaml.safe_load(p.read_text())
+
+# Update image section
+data.setdefault("image", {})
+data["image"]["repository"] = "\${ECR_REPO_URL}"
+data["image"]["tag"] = str("${BUILD_NUMBER}")
+data["image"]["pullPolicy"] = data["image"].get("pullPolicy", "Always")
+
+# Optional DB env overrides from Jenkins environment (if provided)
+cfg = data.setdefault("configMap", {})
+
+for key, envvar in [
+    ("DATABASE_HOST", "DB_HOST"),
+    ("DATABASE_NAME", "DB_NAME"),
+    ("DATABASE_USER", "DB_USER"),
+    ("DATABASE_PASSWORD", "DB_PASSWORD"),
+    ("DATABASE_PORT", "DB_PORT"),
+]:
+    v = os.environ.get(envvar)
+    if v:
+        cfg[key] = str(v)
+
+p.write_text(yaml.safe_dump(data, sort_keys=False, default_flow_style=False))
+print("Updated", p)
+PY
+
+                            echo "==== values.yaml after update ===="
+                            cat ${VALUES_FILE}
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Commit & Push GitOps changes') {
+            steps {
+                withCredentials([string(credentialsId: 'github_pat', variable: 'GITHUB_TOKEN')]) {
+                    sh """
+                        set -euo pipefail
+                        
+                        # Ensure we are at repo root
+                        cd ${WORKSPACE}
+                        
+                        # Configure git
+                        git config user.email "jenkins@local"
+                        git config user.name "jenkins"
+                        
+                        # Checkout target branch
+                        git checkout ${GIT_BRANCH} || git checkout -b ${GIT_BRANCH}
+                        
+                        # Add changed values file
+                        git add ${VALUES_FILE}
+                        
+                        # Commit only if there are changes
+                        if git diff --cached --quiet; then
+                            echo "No changes to commit."
+                            exit 0
+                        fi
+                        
+                        git commit -m "ci: deploy image tag ${BUILD_NUMBER}"
+                        
+                        # Push using token (https)
+                        ORIGIN_URL=\$(git config --get remote.origin.url)
+                        echo "Origin: \$ORIGIN_URL"
+                        
+                        # If origin is https://github.com/..., inject token
+                        if echo "\$ORIGIN_URL" | grep -q "^https://"; then
+                            PUSH_URL=\$(echo "\$ORIGIN_URL" | sed "s#https://#https://\${GITHUB_TOKEN}@#")
+                            git push "\$PUSH_URL" ${GIT_BRANCH}
+                        else
+                            # If origin is git@github.com:... assume Jenkins has SSH key configured
+                            git push origin ${GIT_BRANCH}
+                        fi
+                        
+                        echo "Successfully pushed changes to ${GIT_BRANCH}"
+                    """
+                }
+            }
+        }
     }
     
     post {

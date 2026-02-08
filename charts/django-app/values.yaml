@@ -1,9 +1,9 @@
 replicaCount: 2
 
 image:
-  repository: ""  # Буде заповнено з ECR
-  pullPolicy: IfNotPresent
-  tag: "latest"
+  repository: ""  # Буде заповнено Jenkins з ECR
+  pullPolicy: "Always"
+  tag: "latest"   # Буде замінювати Jenkins на BUILD_NUMBER
 
 service:
   type: ClusterIP
