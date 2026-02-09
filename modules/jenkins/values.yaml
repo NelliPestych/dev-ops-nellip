@@ -18,7 +18,7 @@ controller:
     - kubernetes:4203.v1dd44f5b_1cf9
     - workflow-aggregator:600.vb_57cdd26fdd7
     - git:5.2.2
-    - configuration-as-code:1856.vccdd26226312
+    - configuration-as-code:1932.v75cb_b_f1b_698d
   
   jenkinsUrl: "http://jenkins:8080"
   
