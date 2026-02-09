@@ -19,10 +19,10 @@ resource "helm_release" "argocd" {
 }
 
 # Встановлення Argo CD Applications через Helm chart
-resource "helm_release" "argocd_apps" {
-  name      = "argocd-apps"
-  chart     = "${path.module}/charts"
-  namespace = kubernetes_namespace.argocd.metadata[0].name
-
-  depends_on = [helm_release.argocd]
-}
+# resource "helm_release" "argocd_apps" {
+#   name      = "argocd-apps"
+#   chart     = "${path.module}/charts"
+#   namespace = kubernetes_namespace.argocd.metadata[0].name
+#
+#   depends_on = [helm_release.argocd]
+# }
