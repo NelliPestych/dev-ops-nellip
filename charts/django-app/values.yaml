@@ -37,13 +37,15 @@ autoscaling:
 env:
   DEBUG: "False"
   ALLOWED_HOSTS: "*"
+  # Отримати RDS endpoint: terraform output -raw rds_endpoint
   DATABASE_HOST: "your-rds-endpoint"
   DATABASE_PORT: "5432"
   DATABASE_NAME: "djangodb"
-  DATABASE_USER: "admin"
+  DATABASE_USER: "dbadmin"
 
 secrets:
-  DATABASE_PASSWORD: "your-password"
+  # Пароль з terraform.tfvars (rds_password)
+  DATABASE_PASSWORD: "ChangeMe123!"
 
 nodeSelector: {}
 
