@@ -71,7 +71,7 @@ terraform apply
 
 ```hcl
 aws_region            = "us-east-1"
-rds_password          = "YourSecurePassword123!"  # Змініть на безпечний пароль
+rds_password          = "YourSecurePassword123!"
 ```
 
 ### 3. Ініціалізація основного Terraform проєкту
