@@ -12,10 +12,10 @@ controller:
   servicePort: 8080
   
   installPlugins:
-    - kubernetes
-    - workflow-aggregator
-    - git
-    - configuration-as-code
+    - kubernetes:4203.v1dd44f5b_1cf9
+    - workflow-aggregator:600.vb_57cdd26fdd7
+    - git:5.2.2
+    - configuration-as-code:1856.vccdd26226312
   
   jenkinsUrl: "http://jenkins:8080"
   
