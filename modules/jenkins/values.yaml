@@ -2,11 +2,11 @@ controller:
   replicas: 1
   resources:
     requests:
-      cpu: "500m"
-      memory: "1Gi"
+      cpu: "250m"
+      memory: "512Mi"
     limits:
-      cpu: "2000m"
-      memory: "2Gi"
+      cpu: "1000m"
+      memory: "1Gi"
   
   serviceType: ClusterIP
   servicePort: 8080

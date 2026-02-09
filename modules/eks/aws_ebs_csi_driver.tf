@@ -58,7 +58,7 @@ resource "aws_iam_role_policy_attachment" "ebs_csi_driver" {
 resource "aws_eks_addon" "ebs_csi_driver" {
   cluster_name             = aws_eks_cluster.main.name
   addon_name               = "aws-ebs-csi-driver"
-  addon_version            = "v1.29.0-eksbuild.1"
+  # addon_version removed - let AWS choose default compatible version
   service_account_role_arn = aws_iam_role.ebs_csi_driver.arn
 
   depends_on = [
