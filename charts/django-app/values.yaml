@@ -54,3 +54,7 @@ affinity: {}
 serviceAccount:
   create: true
   name: ""
+
+imagePullSecrets: []
+# imagePullSecrets:
+#   - name: ecr-registry-secret
