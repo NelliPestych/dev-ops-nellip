@@ -1,9 +1,9 @@
 replicaCount: 2
 
 image:
-  repository: ""  # Буде заповнено Jenkins з ECR
-  pullPolicy: "Always"
-  tag: "latest"   # Буде замінювати Jenkins на BUILD_NUMBER
+  repository: 053414411835.dkr.ecr.us-east-1.amazonaws.com/django-app
+  tag: latest
+  pullPolicy: Always
 
 service:
   type: ClusterIP
