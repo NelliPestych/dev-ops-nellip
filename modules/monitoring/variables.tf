@@ -13,8 +13,7 @@ variable "cluster_ca" {
   type        = string
 }
 
-variable "cluster_token" {
-  description = "EKS cluster token"
+variable "aws_region" {
+  description = "AWS region"
   type        = string
-  sensitive   = true
 }

@@ -82,7 +82,7 @@ module "jenkins" {
   cluster_name     = module.eks.cluster_name
   cluster_endpoint = module.eks.cluster_endpoint
   cluster_ca       = module.eks.cluster_ca
-  cluster_token    = module.eks.cluster_token
+  aws_region       = var.aws_region
   chart_version    = var.jenkins_chart_version
 }
 
@@ -93,7 +93,7 @@ module "argo_cd" {
   cluster_name     = module.eks.cluster_name
   cluster_endpoint = module.eks.cluster_endpoint
   cluster_ca       = module.eks.cluster_ca
-  cluster_token    = module.eks.cluster_token
+  aws_region       = var.aws_region
   chart_version    = var.argocd_chart_version
 }
 
@@ -104,5 +104,5 @@ module "monitoring" {
   cluster_name     = module.eks.cluster_name
   cluster_endpoint = module.eks.cluster_endpoint
   cluster_ca       = module.eks.cluster_ca
-  cluster_token    = module.eks.cluster_token
+  aws_region       = var.aws_region
 }

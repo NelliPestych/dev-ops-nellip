@@ -17,7 +17,6 @@ controller:
     - git:latest
     - configuration-as-code:latest
     - docker-workflow:latest
-    - blueocean:latest
   
   jenkinsUrl: "http://jenkins:8080"
   
