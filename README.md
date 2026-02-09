@@ -221,18 +221,77 @@ Jenkins pipeline автоматично виконує наступні крок
 - При виявленні нового commit з оновленими values.yaml, Argo CD автоматично синхронізує додаток
 - Виконується deploy/rollout нового образу в EKS
 
-### Jenkins Credentials
+### Налаштування Jenkins Pipeline
 
-Для роботи pipeline потрібні наступні credentials в Jenkins:
+#### Jenkins Admin Credentials
+
+**URL**: http://localhost:8080 (після port-forward)
+**Логін**: admin
+**Пароль**: Отримайте командою:
+```bash
+kubectl exec -n jenkins jenkins-0 -c jenkins -- cat /run/secrets/additional/chart-admin-password
+```
+
+#### Створення Pipeline Job
+
+1. Відкрийте Jenkins UI:
+   ```bash
+   kubectl port-forward svc/jenkins 8080:8080 -n jenkins
+   ```
+   Відкрийте в браузері: http://localhost:8080
+
+2. Створіть новий Pipeline:
+   - Натисніть **"New Item"** (або "Створити новий проект")
+   - Введіть назву: **django-app**
+   - Виберіть **"Pipeline"** і натисніть **OK**
+   - У розділі **"Pipeline"**:
+     - Виберіть **"Pipeline script from SCM"**
+     - **SCM**: Git
+     - **Repository URL**: `https://github.com/NelliPestych/dev-ops-nellip.git`
+     - **Branch**: `*/final_project`
+     - **Script Path**: `Django/Jenkinsfile`
+   - Натисніть **"Save"** (Зберегти)
+
+#### Jenkins Credentials
+
+Перед запуском pipeline переконайтеся, що створені credentials в Jenkins:
 
 1. **github_pat** (Secret text):
    - GitHub Personal Access Token з правами `repo`
-   - Використовується для push змін в репозиторій
+   - Jenkins → Manage Jenkins → Credentials → Add Credentials
+   - Kind: Secret text
+   - ID: `github_pat`
    - Створіть токен: GitHub Settings → Developer settings → Personal access tokens
 
-2. **aws-credentials** (AWS credentials):
+2. **aws-credentials** (AWS Credentials):
    - AWS Access Key ID та Secret Access Key
+   - Jenkins → Manage Jenkins → Credentials → Add Credentials
+   - Kind: AWS Credentials
+   - ID: `aws-credentials`
    - Використовується для доступу до ECR та EKS
+
+3. **eks-credentials** (Kubernetes config, опціонально):
+   - Kubernetes config для доступу до EKS
+   - Jenkins → Manage Jenkins → Credentials → Add Credentials
+   - Kind: Kubernetes configuration
+   - ID: `eks-credentials`
+
+#### Запуск Pipeline
+
+1. На головній сторінці Jenkins знайдіть **django-app**
+2. Натисніть **"Build Now"** (або "Запустити збірку")
+3. Pipeline почне виконуватися автоматично
+4. Перевірте прогрес: натисніть на номер build (наприклад, #1) → "Console Output"
+
+#### Що робить Pipeline
+
+1. **Checkout**: Клонує код з репозиторію
+2. **Setup Python dependencies**: Встановлює pyyaml
+3. **Build**: Білдить Docker образ Django додатку
+4. **Test**: Запускає тести (якщо є)
+5. **Push to ECR**: Пушить образ в ECR з тегом BUILD_NUMBER
+6. **Update Helm values**: Оновлює `charts/django-app/values.yaml` з новим image.repository та image.tag
+7. **Commit & Push**: Комітить зміни в гілку `final_project` та пушить в репозиторій
 
 ### CI/CD Demo
 
@@ -249,6 +308,19 @@ Jenkins pipeline автоматично виконує наступні крок
 5. Додаток оновлюється з новим образом
 
 **Важливо**: Перший деплой додатку робиться після першого успішного запуску Jenkins pipeline, оскільки `charts/django-app/values.yaml` має порожній `image.repository` до першого pipeline run. Після першого pipeline Jenkins заповнить реальний ECR URL, і Argo CD зможе виконати деплой.
+
+#### Перевірка результату після Pipeline
+
+```bash
+# Перевірте Argo CD Application
+kubectl get application django-app -n argocd
+
+# Перевірте Django app pods
+kubectl get pods -l app.kubernetes.io/name=django-app
+
+# Перевірте логи
+kubectl logs -l app.kubernetes.io/name=django-app --tail=50
+```
 
 ## Моніторинг
 
