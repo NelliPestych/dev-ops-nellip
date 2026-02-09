@@ -47,3 +47,11 @@ Selector labels
 app.kubernetes.io/name: {{ include "django-app.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{- define "django-app.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create -}}
+{{- default (include "django-app.fullname" .) .Values.serviceAccount.name -}}
+{{- else -}}
+{{- default "default" .Values.serviceAccount.name -}}
+{{- end -}}
+{{- end -}}
