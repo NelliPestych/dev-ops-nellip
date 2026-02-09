@@ -21,28 +21,29 @@ ingress:
 
 resources:
   requests:
-    cpu: "250m"
-    memory: "512Mi"
+    cpu: 100m
+    memory: 256Mi
   limits:
-    cpu: "1000m"
-    memory: "1Gi"
+    cpu: 500m
+    memory: 512Mi
 
 autoscaling:
-  enabled: true
-  minReplicas: 2
-  maxReplicas: 10
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 2
   targetCPUUtilizationPercentage: 80
   targetMemoryUtilizationPercentage: 80
 
-configMap:
-  # Django settings
+env:
   DEBUG: "False"
   ALLOWED_HOSTS: "*"
-  DATABASE_HOST: ""  # Буде заповнено з RDS endpoint
+  DATABASE_HOST: "your-rds-endpoint"
   DATABASE_PORT: "5432"
   DATABASE_NAME: "djangodb"
   DATABASE_USER: "admin"
-  DATABASE_PASSWORD: ""  # Буде заповнено з Secret
+
+secrets:
+  DATABASE_PASSWORD: "your-password"
 
 nodeSelector: {}
 

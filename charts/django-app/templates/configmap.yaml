@@ -5,9 +5,9 @@ metadata:
   labels:
     {{- include "django-app.labels" . | nindent 4 }}
 data:
-  DEBUG: {{ .Values.configMap.DEBUG | quote }}
-  ALLOWED_HOSTS: {{ .Values.configMap.ALLOWED_HOSTS | quote }}
-  DATABASE_HOST: {{ .Values.configMap.DATABASE_HOST | quote }}
-  DATABASE_PORT: {{ .Values.configMap.DATABASE_PORT | quote }}
-  DATABASE_NAME: {{ .Values.configMap.DATABASE_NAME | quote }}
-  DATABASE_USER: {{ .Values.configMap.DATABASE_USER | quote }}
+  DEBUG: {{ .Values.env.DEBUG | quote }}
+  ALLOWED_HOSTS: {{ .Values.env.ALLOWED_HOSTS | quote }}
+  DATABASE_HOST: {{ .Values.env.DATABASE_HOST | quote }}
+  DATABASE_PORT: {{ .Values.env.DATABASE_PORT | quote }}
+  DATABASE_NAME: {{ .Values.env.DATABASE_NAME | quote }}
+  DATABASE_USER: {{ .Values.env.DATABASE_USER | quote }}
